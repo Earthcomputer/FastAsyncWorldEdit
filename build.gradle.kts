@@ -1,6 +1,10 @@
 import org.ajoberstar.grgit.Grgit
 import java.time.format.DateTimeFormatter
 
+plugins {
+    `maven-publish`
+}
+
 logger.lifecycle("""
 *******************************************
  You are building FastAsyncWorldEdit!
@@ -56,5 +60,43 @@ if (!project.hasProperty("gitCommitHash")) {
         logger.warn("Error getting commit hash", e)
 
         "no.git.id"
+    }
+}
+
+val props = java.util.Properties()
+props.load(java.io.FileReader("credentials.properties"))
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            subprojects {
+                afterEvaluate {
+                    val proj = this
+                    try {
+                        val jar = tasks.getByName<Jar>("jar")
+                        val sourcesJar = tasks.getByName<Jar>("sourcesJar")
+                        artifact(jar) {
+                            classifier = proj.name
+                            builtBy(jar)
+                        }
+                        artifact(sourcesJar) {
+                            builtBy(sourcesJar)
+                            classifier = proj.name + "-sources"
+                        }
+                    } catch (e: UnknownTaskException) {
+                        // ignore
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = uri("https://api.bintray.com/maven/earthcomputer/mods/fawe/")
+            credentials {
+                username = "earthcomputer"
+                password = props.getProperty("bintrayPass")
+            }
+        }
     }
 }
